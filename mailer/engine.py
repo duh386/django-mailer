@@ -6,6 +6,7 @@ from lockfile import FileLock, AlreadyLocked, LockTimeout
 from socket import error as socket_error
 
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 from django.core.mail import send_mail as core_send_mail
 try:
     # Django 1.2
@@ -28,6 +29,8 @@ LOCK_WAIT_TIMEOUT = getattr(settings, "MAILER_LOCK_WAIT_TIMEOUT", -1)
 # The actual backend to use for sending, defaulting to the Django default.
 EMAIL_BACKEND = getattr(settings, "MAILER_EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 
+if not hasattr(settings, 'EMAIL_HOST_USER_MASS') or not hasattr(settings, 'EMAIL_HOST_PASSWORD_MASS'):
+    raise ImproperlyConfigured('Please define settings EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS in settings.py')
 
 def prioritize():
     """
@@ -70,16 +73,23 @@ def send_all():
     dont_send = 0
     deferred = 0
     sent = 0
-    
+
     try:
         connection = None
+        mass_connection = None
         for message in prioritize():
             try:
                 if connection is None:
                     connection = get_connection(backend=EMAIL_BACKEND)
+                if mass_connection is None:
+                    mass_connection = get_connection(backend=EMAIL_BACKEND, username=settings.EMAIL_HOST_USER_MASS,
+                                                     password=settings.EMAIL_HOST_PASSWORD_MASS)
                 logging.info("sending message '%s' to %s" % (message.subject.encode("utf-8"), u", ".join(message.to_addresses).encode("utf-8")))
                 email = message.email
-                email.connection = connection
+                if message.is_mass:
+                    email.connection = mass_connection
+                else:
+                    email.connection = connection
                 email.send()
                 MessageLog.objects.log(message, 1) # @@@ avoid using literal result code
                 message.delete()
@@ -90,7 +100,10 @@ def send_all():
                 MessageLog.objects.log(message, 3, log_message=str(err)) # @@@ avoid using literal result code
                 deferred += 1
                 # Get new connection, it case the connection itself has an error.
-                connection = None
+                if message.is_mass:
+                    mass_connection = None
+                else:
+                    connection = None
     finally:
         logging.debug("releasing lock...")
         lock.release()

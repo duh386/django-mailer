@@ -28,7 +28,7 @@ PRIORITY_MAPPING = {
 
 
 def send_mail(subject, message, from_email, recipient_list, priority="medium",
-              fail_silently=False, auth_user=None, auth_password=None):
+              fail_silently=False, auth_user=None, auth_password=None, is_mass=False):
     from django.utils.encoding import force_unicode
     from mailer.models import make_message
     
@@ -42,13 +42,14 @@ def send_mail(subject, message, from_email, recipient_list, priority="medium",
                  body=message,
                  from_email=from_email,
                  to=recipient_list,
+                 is_mass=is_mass,
                  priority=priority).save()
     return 1
 
 
 def send_html_mail(subject, message, message_html, from_email, recipient_list,
                    priority="medium", fail_silently=False, auth_user=None,
-                   auth_password=None):
+                   auth_password=None, is_mass=False):
     """
     Function to queue HTML e-mails
     """
@@ -66,7 +67,8 @@ def send_html_mail(subject, message, message_html, from_email, recipient_list,
                        body=message,
                        from_email=from_email,
                        to=recipient_list,
-                       priority=priority)
+                       priority=priority,
+                       is_mass=is_mass)
     email = msg.email
     email = EmailMultiAlternatives(email.subject, email.body, email.from_email, email.to)
     email.attach_alternative(message_html, "text/html")
@@ -76,29 +78,29 @@ def send_html_mail(subject, message, message_html, from_email, recipient_list,
 
 
 def send_mass_mail(datatuple, fail_silently=False, auth_user=None,
-                   auth_password=None, connection=None):
+                   auth_password=None, connection=None, is_mass=False):
     from mailer.models import make_message
     num_sent = 0
     for subject, message, sender, recipient in datatuple:
-        num_sent += send_mail(subject, message, sender, recipient)
+        num_sent += send_mail(subject, message, sender, recipient, is_mass=is_mass)
     return num_sent
 
 
-def mail_admins(subject, message, fail_silently=False, connection=None, priority="medium"):
+def mail_admins(subject, message, fail_silently=False, connection=None, priority="medium", is_mass=False):
     from django.conf import settings
     from django.utils.encoding import force_unicode
     
     return send_mail(settings.EMAIL_SUBJECT_PREFIX + force_unicode(subject),
                      message,
                      settings.SERVER_EMAIL,
-                     [a[1] for a in settings.ADMINS])
+                     [a[1] for a in settings.ADMINS], is_mass=is_mass)
 
 
-def mail_managers(subject, message, fail_silently=False, connection=None, priority="medium"):
+def mail_managers(subject, message, fail_silently=False, connection=None, priority="medium", is_mass=False):
     from django.conf import settings
     from django.utils.encoding import force_unicode
     
     return send_mail(settings.EMAIL_SUBJECT_PREFIX + force_unicode(subject),
                      message,
                      settings.SERVER_EMAIL,
-                     [a[1] for a in settings.MANAGERS])
+                     [a[1] for a in settings.MANAGERS], is_mass=is_mass)
