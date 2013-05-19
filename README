@@ -1,4 +1,27 @@
-django-mailer by James Tauber <http://jtauber.com/>
-http://code.google.com/p/django-mailer/
+>>>django-mailer by James Tauber <http://jtauber.com/>
+>>>http://code.google.com/p/django-mailer/
 
-A reusable Django app for queuing the sending of email
+>>>A reusable Django app for queuing the sending of email
+
+Add possibility to use alternative authorization for sending email (tested on smtp). For using it, you should provide additional (bool) 'is_mass' parameter into sending functions. If True, application will use EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS parameters from settings.py for authorization. Many smtp servers check, if "from_email" param coincide with authorization username, and they return error if no. To avoid it, pass "from_email" param manually.
+EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS are nesessary in settings.py (will raised ImproperlyConfigured if no).
+
+EXAMPLES
+
+settings.py: 
+
+EMAIL_HOST_USER = 'user1@gmail.com'
+EMAIL_HOST_PASSWORD = 'password1'
+EMAIL_HOST_USER_MASS = 'user2@gmail.com'
+EMAIL_HOST_PASSWORD_MASS = 'password2'
+
+sending email:
+
+from django.conf import settings
+import mailer
+
+mailer.send_html_mail('Email subject', 'email text', '<b>email text</b>', from_email=settings.EMAIL_HOST_USER, recipient_list=('to_email@gmail.com',))
+# Message will be sent with EMAIL_HOST_USER and EMAIL_HOST_PASSWORD authorization
+
+mailer.send_html_mail('Email subject', 'email text', '<b>email text</b>', from_email=settings.EMAIL_HOST_USER_MASS, recipient_list=('to_email@gmail.com',), is_mass=True)
+# Message will be sent with EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS authorization
