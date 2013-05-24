@@ -3,8 +3,13 @@
 
 >>>A reusable Django app for queuing the sending of email
 
-Add possibility to use alternative authorization for sending email (tested on smtp). For using it, you should provide additional (bool) 'is_mass' parameter into sending functions. If True, application will use EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS parameters from settings.py for authorization. Many smtp servers check, if "from_email" param coincide with authorization username, and they return error if no. To avoid it, pass "from_email" param manually.
-EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS are nesessary in settings.py (will raised ImproperlyConfigured if no).
+Add possibility to sending email from second queue and authorization. For using it, you should provide additional (bool) 'is_mass' parameter into sending functions. 
+If True, application will use EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS parameters from settings.py for authorization. Many smtp servers check, if "from_email" param coincide with authorization username, and they return error if no. To avoid it, pass "from_email" param manually. Also there is next algorithm in sendin: email is sent in some attempts with interval between them. There is some settings for managing them:
+MAILER_MASS_QUEUE_SIZE = <int> # Count of letters in one attempt
+MAILER_MASS_QUEUE_INTERVAL = <int> # Interval in minutes between attempts
+MAILER_MASS_QUEUE_ATTEMPTS = <int> # Count of attempts
+
+All additional parameters is required
 
 EXAMPLES
 
@@ -14,6 +19,9 @@ EMAIL_HOST_USER = 'user1@gmail.com'
 EMAIL_HOST_PASSWORD = 'password1'
 EMAIL_HOST_USER_MASS = 'user2@gmail.com'
 EMAIL_HOST_PASSWORD_MASS = 'password2'
+MAILER_MASS_QUEUE_SIZE = 5
+MAILER_MASS_QUEUE_INTERVAL = 1
+MAILER_MASS_QUEUE_ATTEMPTS = 3
 
 sending email:
 
@@ -24,4 +32,7 @@ mailer.send_html_mail('Email subject', 'email text', '<b>email text</b>', from_e
 # Message will be sent with EMAIL_HOST_USER and EMAIL_HOST_PASSWORD authorization
 
 mailer.send_html_mail('Email subject', 'email text', '<b>email text</b>', from_email=settings.EMAIL_HOST_USER_MASS, recipient_list=('to_email@gmail.com',), is_mass=True)
-# Message will be sent with EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS authorization
+# Message will be sent with EMAIL_HOST_USER_MASS and EMAIL_HOST_PASSWORD_MASS authorization and will be use attempts algorithm.
+
+python manage.py send_mail ; starting sending for letters with is_mass=False (by default)
+python manage.py send_mass_mail ; starting sending for letters with is_mass=True. Letters will be sent in 3 attempts with 5 units in each one.
